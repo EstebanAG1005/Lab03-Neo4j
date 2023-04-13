@@ -17,6 +17,41 @@ def add_user(tx, name, user_id):
     )
 
 
+def add_genre(tx, name):
+    tx.run("CREATE (g:Genre {name: $name})", name=name)
+
+
+# Funciones para crear nodos y relaciones en Neo4j
+def person_director(tx, name, tmdb_id, born, died, born_in, url, imdb_id, bio, poster):
+    tx.run(
+        "CREATE (pd:PersonDirector {name: $name, tmdb_id: $tmdb_id, born: $born, died: $died, born_in: $born_in, url: $url, imdb_id: $imdb_id, bio: $bio, poster: $poster})",
+        name=name,
+        tmdb_id=tmdb_id,
+        born=born,
+        died=died,
+        born_in=born_in,
+        url=url,
+        imdb_id=imdb_id,
+        bio=bio,
+        poster=poster,
+    )
+
+
+def person_actor(tx, name, tmdb_id, born, died, born_in, url, imdb_id, bio, poster):
+    tx.run(
+        "CREATE (pa:PersonActor {name: $name, tmdb_id: $tmdb_id, born: $born, died: $died, born_in: $born_in, url: $url, imdb_id: $imdb_id, bio: $bio, poster: $poster})",
+        name=name,
+        tmdb_id=tmdb_id,
+        born=born,
+        died=died,
+        born_in=born_in,
+        url=url,
+        imdb_id=imdb_id,
+        bio=bio,
+        poster=poster,
+    )
+
+
 def add_movie(tx, title, movie_id, year, plot):
     tx.run(
         "CREATE (m:Movie {title: $title, movie_id: $movie_id, year: $year, plot: $plot})",
@@ -36,6 +71,33 @@ def add_rating(tx, user_id, movie_id, rating, timestamp):
     tx.run(
         query, user_id=user_id, movie_id=movie_id, rating=rating, timestamp=timestamp
     )
+
+
+def add_directed(tx, imdb_id, movie_id, role):
+    query = """
+    MATCH (pd:PersonDirector {imdb_id: $imdb_id})
+    MATCH (m:Movie {movie_id: $movie_id})
+    CREATE (pd)-[r:Directed {role: $role}]->(m)
+    """
+    tx.run(query, imdb_id=imdb_id, movie_id=movie_id, role=role)
+
+
+def add_acted_in(tx, imdb_id, movie_id, role):
+    query = """
+    MATCH (pa:PersonActor {imdb_id: $imdb_id})
+    MATCH (m:Movie {movie_id: $movie_id})
+    CREATE (pa)-[r:Acted_In {role: $role}]->(m)
+    """
+    tx.run(query, imdb_id=imdb_id, movie_id=movie_id, role=role)
+
+
+def add_in_genre(tx, movie_id, name):
+    query = """
+    MATCH (m:Movie {movie_id: $movie_id})
+    MATCH (g:Genre {name: $name})
+    CREATE (m)-[r:In_Genre]->(g)
+    """
+    tx.run(query, name=name, movie_id=movie_id)
 
 
 # Poblar grafo en Neo4j
@@ -148,3 +210,58 @@ if __name__ == "__main__":
         user_rating = session.read_transaction(find_user_rating_for_movie, "u2", 3)
 
         print_results(user, movie, user_rating)
+
+        # Crear nodos de ejemplo
+        session.write_transaction(
+            person_director,
+            "Quentin Tarantino",
+            138,
+            "1963-03-27T00:00:00",
+            None,
+            "Knoxville, Tennessee, USA",
+            "https://www.example.com",
+            233,
+            "Quentin Jerome Tarantino is an American filmmaker...",
+            "https://image.example.com",
+        )
+        session.write_transaction(
+            person_actor,
+            "Leonardo DiCaprio",
+            6193,
+            "1974-11-11T00:00:00",
+            None,
+            "Los Angeles, California, USA",
+            "https://www.example.com",
+            138,
+            "Leonardo Wilhelm DiCaprio is an American actor and film producer...",
+            "https://image.example.com",
+        )
+        session.write_transaction(
+            add_movie,
+            "Inception",
+            27205,
+            "2010-07-16T00:00:00",
+            8.8,
+            1,
+            2010,
+            1375666,
+            148,
+            ["USA", "UK"],
+            2002816,
+            "https://www.example.com",
+            825532764,
+            "A thief who steals corporate secrets...",
+            "https://image.example.com",
+            160000000,
+            ["English", "Japanese", "French"],
+        )
+
+        # Crear relaciones de ejemplo
+        session.write_transaction(add_directed, 233, 1, "Director")
+        session.write_transaction(add_acted_in, 138, 1, "Cobb")
+
+        # Crear Genre
+        session.write_transaction(add_genre, "Action")
+
+        # Relacion de Movie y Genre
+        session.write_transaction(add_in_genre, 1, "Action")
